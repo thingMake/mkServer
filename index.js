@@ -46,7 +46,7 @@ router.get("/test",(req,res) => {
 router.get("/info",(req,res) => {
   res.json({
     name:"Test server",
-    description:"Don't join this server. It is is development. Also, what should i call this server?",
+    description:"This server is in development. Also, what should i call this server?",
     players:players.map(p => p.username)
   })
 })
