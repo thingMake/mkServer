@@ -51,9 +51,7 @@ router.get("/info",(req,res) => {
   })
 })
 router.get("/log",(req,res) => {
-  db.get("log").then(r => {
-    res.send("<span style='font-family:monospace;'>"+r.join("<br>")+"</span>")
-  })
+  res.send("<span style='font-family:monospace;'>"+log.join("<br>")+"</span>")
 })
 
 app.use(router)
