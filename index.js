@@ -100,7 +100,7 @@ wsServer.on("request", req => {
         data:"send({type:'nameSuggest',data:prompt('what should i call this server?')})"
       })
     }else if(data.type === "nameSuggest"){
-      Log(data.data)
+      Log(connection.username+": "+data.data)
       if(data.data) send({type:"error",data:"thank you "+connection.username+"."})
       connection.close()
     }
