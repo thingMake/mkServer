@@ -19,7 +19,7 @@ router.get("/info",(req,res) => {
   res.json({
     name:"Test server",
     description:"Just don't join",
-    players:players.forEach(p => p.username)
+    players:players.map(p => p.username)
   })
 })
 
