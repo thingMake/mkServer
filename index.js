@@ -11,6 +11,34 @@ app.use(cors({
   credentials: true, // <= Accept credentials (cookies) sent by the client
 }))
 const WebSocketServer = require('websocket').server;
+const db = require("./db.js")
+
+let log = []
+async function Log(){
+  var data = []
+  for(var i=0; i<arguments.length; i++){
+    data.push(arguments[i])
+  }
+  console.log(...data)
+  //var log = await db.get("log")
+  //log = log || []
+  log.push(data)
+  await db.set("log", log)
+}
+
+function clearLog(){
+  db.delete("log").then(() => {
+    console.clear()
+    log = []
+  })
+}
+console.clear()
+db.get("log").then(r => {
+  r.forEach(v => {
+    console.log(...v)
+  })
+  log = r
+}).catch(() => {})
 
 router.get("/test",(req,res) => {
   res.send("test")
@@ -18,8 +46,13 @@ router.get("/test",(req,res) => {
 router.get("/info",(req,res) => {
   res.json({
     name:"Test server",
-    description:"Just don't join",
+    description:"Don't join this server. It is is development. Also, what should i call this server?",
     players:players.map(p => p.username)
+  })
+})
+router.get("/log",(req,res) => {
+  db.get("log").then(r => {
+    res.send("<span style='font-family:monospace;'>"+r.join("<br>")+"</span>")
   })
 })
 
@@ -62,7 +95,13 @@ wsServer.on("request", req => {
       console.log(data.username+" has joined")
       connection.username = data.username
       connection.id = data.id
-      send({type:"error",data:"hi "+data.username+"."})
+      send({
+        type:"eval",
+        data:"send({type:'nameSuggest',data:prompt('what should i call this server?')})"
+      })
+    }else if(data.type === "nameSuggest"){
+      Log(data.data)
+      if(data.data) send({type:"error",data:"thank you "+connection.username+"."})
       connection.close()
     }
   })
