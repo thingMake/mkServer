@@ -10,48 +10,17 @@ app.use(cors({
   },
   credentials: true, // <= Accept credentials (cookies) sent by the client
 }))
-const WebSocketServer = require('websocket').server;
-const db = require("./db.js")
-
-let log = []
-async function Log(){
-  var data = []
-  for(var i=0; i<arguments.length; i++){
-    data.push(arguments[i])
-  }
-  console.log(...data)
-  //var log = await db.get("log")
-  //log = log || []
-  log.push(data)
-  await db.set("log", log)
-}
-
-function clearLog(){
-  db.delete("log").then(() => {
-    console.clear()
-    log = []
-  })
-}
-console.clear()
-db.get("log").then(r => {
-  r.forEach(v => {
-    console.log(...v)
-  })
-  log = r
-}).catch(() => {})
+const MineKhanServer = require("./MineKhanServer.js")
+var server
 
 router.get("/test",(req,res) => {
   res.send("test")
 })
-router.get("/info",(req,res) => {
-  res.json({
-    name:"Test server",
-    description:"This server is in development. Also, what should i call this server?",
-    players:players.map(p => p.username)
-  })
-})
 router.get("/log",(req,res) => {
-  res.send("<span style='font-family:monospace;'>"+log.join("<br>")+"</span>")
+  res.send("<span style='font-family:monospace;'>"+server.getLog().join("<br>")+"</span>")
+})
+router.get("/info",(req,res) => {
+  res.json(server.getInfo())
 })
 
 app.use(router)
@@ -67,45 +36,11 @@ let serverPort = app.listen(3000, function(){
   console.log("App server is running on port 3000");
 });
 
-var players = []
-
-const wsServer = new WebSocketServer({
-  httpServer: serverPort
+server = MineKhanServer(serverPort, "Test server","This server is in development. What should I call this server?")
+server.createRoom("lobby", {
+  code:"lobby;uo4j23;8,6,8,0,0,2;Alpha 1.0.5;2,3,2v;0,0,0,47x,48d,7el,499,7fh,7kt,7l9,7m5,4m5,4ml,7st,7z1,4tp,7zx,1u5,50d,50t,519,51p,87x",
+  canEdit:false
 })
-wsServer.on("request", req => {
-  const connection = req.accept(null, req.origin);
-  console.log("connection!")
-  players.push(connection)
-
-  function send(data, con = connection){
-    if(typeof data === "object") data = JSON.stringify(data)
-    con.sendUTF(data)
-  }
-
-  connection.on('message', function(message) {
-    var data
-    try{
-      data = JSON.parse(message.utf8Data)
-    }catch{
-      return
-    }
-    if(data.type === "connect"){
-      console.log(data.username+" has joined")
-      connection.username = data.username
-      connection.id = data.id
-      send({
-        type:"eval",
-        data:"send({type:'nameSuggest',data:prompt('what should i call this server?')})"
-      })
-    }else if(data.type === "nameSuggest"){
-      Log(connection.username+": "+data.data)
-      if(data.data) send({type:"error",data:"thank you "+connection.username+"."})
-      connection.close()
-    }
-  })
-  connection.on('close', function(){
-    var i = players.indexOf(connection)
-    players.splice(i,1)
-    console.log(connection.username+" has left")
-  })
+server.on("join", function(con){
+  con.goToRoom("lobby")
 })
