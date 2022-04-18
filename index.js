@@ -36,11 +36,17 @@ let serverPort = app.listen(3000, function(){
   console.log("App server is running on port 3000");
 });
 
-server = MineKhanServer(serverPort, "Test server","This server is in development. What should I call this server?")
+server = MineKhanServer(serverPort, "Test server","This server is in development. What should I call this server?", {
+  saveActivity:false
+})
 server.createRoom("lobby", {
   code:"lobby;uo4j23;8,6,8,0,0,2;Alpha 1.0.5;2,3,2v;0,0,0,47x,48d,7el,499,7fh,7kt,7l9,7m5,4m5,4ml,7st,7z1,4tp,7zx,1u5,50d,50t,519,51p,87x",
   canEdit:false
 })
 server.on("join", function(con){
   con.goToRoom("lobby")
+  con.sendJSON({
+    type:"eval",
+    data:"showTitle('Welcome to the server')"
+  })
 })

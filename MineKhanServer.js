@@ -82,8 +82,9 @@ db.get("log").then(r => {
 
 
 const WebSocketServer = require('websocket').server;
-function init(serverPort, name,description){
+function init(serverPort, name,description, options){
   var onJoin
+  var saveActivity = options.saveActivity !== undefined ? options.saveActivity : true
   var rooms = {}
 
   function createRoom(name, options){
@@ -178,7 +179,7 @@ function init(serverPort, name,description){
         return
       }
       if(data.type === "connect"){
-        Log(data.username+" has joined")
+        if(saveActivity) Log(data.username+" has joined");else console.log(data.username+" has joined")
         connection.username = data.username
         connection.id = data.id
         connection.room = null
@@ -245,7 +246,7 @@ function init(serverPort, name,description){
     connection.on('close', function(){
       var i = players.indexOf(connection)
       players.splice(i,1)
-      Log(connection.username+" has left")
+      if(saveActivity) Log(connection.username+" has left");else console.log(connection.username+" has left")
       sendPlayers(JSON.stringify({
         type:"message",
         data: connection.username+" left. "+players.length+" players now.",
