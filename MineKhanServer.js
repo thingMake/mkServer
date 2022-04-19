@@ -248,6 +248,10 @@ function init(serverPort, name,description, options){
       players.splice(i,1)
       if(saveActivity) Log(connection.username+" has left");else console.log(connection.username+" has left")
       sendPlayers(JSON.stringify({
+        type:"dc",
+        data: connection.id
+      }))
+      sendPlayers(JSON.stringify({
         type:"message",
         data: connection.username+" left. "+players.length+" players now.",
         username: "Server",
