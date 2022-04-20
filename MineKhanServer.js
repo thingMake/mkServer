@@ -89,15 +89,99 @@ function init(serverPort, name,description, options){
 
   function createRoom(name, options){
     if(rooms[name]) throw "Room called "+name+" has already been created."
-    rooms[name] = {
+    return rooms[name] = {
       name:name,
       code: options.code,
       spawn: options.spawn, //array
-      canEdit: options.canEdit
+      canEdit: options.canEdit !== undefined ? options.canEdit : !options.code,
+      portals: [],
+      addPortal: function(where, x,y,z, x2,y2,z2){
+        var temp
+        if(x > x2) temp = x, x = x2, x2 = temp
+        if(y > y2) temp = y, y = y2, y2 = temp
+        if(z > z2) temp = z, z = z2, z2 = temp
+        
+        this.portals.push({
+          to:where,
+          x,y,z,x2,y2,z2
+        })
+      },
+      inPortal: function(x,y,z){
+        for(var p of this.portals){
+          if(
+            x >= p.x &&
+            x <= p.x2 &&
+            y >= p.y &&
+            y <= p.y2 &&
+            z >= p.z &&
+            z <= p.z2
+            ) return p.to
+        }
+        return false
+      }
     }
   }
   
+  var goToRoomQueue = []
+  setInterval(function(){
+    if(!goToRoomQueue.length) return
+    for(var i = goToRoomQueue.length - 1; i >= 0; i--){
+      var idx = goToRoomQueue[i].indexOf(":")
+      var p = findPlayerById(goToRoomQueue[i].slice(0,idx))
+      if(!p) continue
+      p.goToRoom(goToRoomQueue[i].slice(idx+1))
+      goToRoomQueue.splice(i,1)
+    }
+  }, 1000)
+  
   var players = []
+  function sendAllPlayers(msg){
+    for(var i=0; i<players.length; i++){
+      var p = players[i]
+      p.sendJSON(msg)
+    }
+  }
+  function sendPlayer(msg, to){
+    for(var i=0; i<players.length; i++){
+      var p = players[i]
+      if(p.id === to){
+        p.sendJSON(msg)
+      }
+    }
+  }
+  function sendPlayerName(msg, to){
+    for(var i=0; i<players.length; i++){
+      var p = players[i]
+      if(p.username === to){
+        p.sendJSON(msg)
+      }
+    }
+  }
+  function closePlayer(id){
+    for(var i=0; i<players.length; i++){
+      var p = players[i]
+      if(p.username === id){
+        p.close()
+      }
+    }
+  }
+  function findPlayer(id){
+    for(var i=0; i<players.length; i++){
+      var p = players[i]
+      if(p.username === id){
+        return p
+      }
+    }
+  }
+  function findPlayerById(id){
+    for(var i=0; i<players.length; i++){
+      var p = players[i]
+      if(p.id === id){
+        return p
+      }
+    }
+  }
+  
   const wsServer = new WebSocketServer({
     httpServer: serverPort
   })
@@ -110,6 +194,7 @@ function init(serverPort, name,description, options){
       if(typeof data === "object") data = JSON.stringify(data)
       con.sendUTF(data)
     }
+    
     function sendPlayers(msg){
       for(var i=0; i<players.length; i++){
         var p = players[i]
@@ -118,30 +203,11 @@ function init(serverPort, name,description, options){
         }
       }
     }
-    function sendAllPlayers(msg){
-      for(var i=0; i<players.length; i++){
-        var p = players[i]
-        p.sendJSON(msg)
-      }
-    }
-    function sendPlayer(msg, to){
-      for(var i=0; i<players.length; i++){
-        var p = players[i]
-        if(p.id === to){
-          p.sendJSON(msg)
-        }
-      }
-    }
     function sendThisPlayer(msg){
       connection.sendJSON(msg)
     }
-    function sendPlayerName(msg, to){
-      for(var i=0; i<players.length; i++){
-        var p = players[i]
-        if(p.username === to){
-          p.sendJSON(msg)
-        }
-      }
+    function closeThisPlayer(){
+      connection.close()
     }
     function closePlayers(){
       for(var i=0; i<players.length; i++){
@@ -151,26 +217,7 @@ function init(serverPort, name,description, options){
         }
       }
     }
-    function closePlayer(id){
-      for(var i=0; i<players.length; i++){
-        var p = players[i]
-        if(p.username === id){
-          p.close()
-        }
-      }
-    }
-    function closeThisPlayer(){
-      connection.close()
-    }
-    function findPlayer(id){
-      for(var i=0; i<players.length; i++){
-        var p = players[i]
-        if(p.username === id){
-          return p
-        }
-      }
-    }
-  
+    
     connection.on('message', function(message) {
       var data
       try{
@@ -193,6 +240,12 @@ function init(serverPort, name,description, options){
             time:0,
             inv: room.spawn ? {x:room.spawn[0], y:room.spawn[1], z:room.spawn[2]} : null
           })
+          for(var p of players){
+            if(p !== connection && p.room !== room){
+              if(p.hiddenPos) sendThisPlayer(p.hiddenPos)
+              if(connection.hiddenPos) p.sendJSON(connection.hiddenPos)
+            }
+          }
         }
         if(onJoin) onJoin(connection)
         sendPlayers(JSON.stringify({
@@ -209,10 +262,34 @@ function init(serverPort, name,description, options){
           fromServer:true
         }))
       }else if(data.type === "pos"){
-        sendPlayers(message.utf8Data)
+        for(var i=0; i<players.length; i++){
+          var p = players[i]
+          if(p !== connection){
+            if(p.room === connection.room) p.sendJSON(message.utf8Data)
+          }
+        }
         sendThisPlayer(JSON.stringify({
           type:"canSendPos"
         }))
+
+        var temp = data.data.hidden
+        data.data.hidden = true
+        connection.hiddenPos = JSON.stringify(data)
+        data.data.hidden = temp
+        
+        var i = connection.room.inPortal(data.data.x, data.data.y, data.data.z)
+        if(i){
+          var str = connection.id+":"+i
+          if(!goToRoomQueue.includes(str)){
+            sendThisPlayer({
+              type:"message",
+              data: "Going to "+i,
+              username: "Server",
+              fromServer:true
+            })
+            goToRoomQueue.push(str)
+          }
+        }
       }else if(data.type === "message" || data.type === "entityPos" || data.type === "entityDelete" || data.type === "die" || data.type === "harmEffect" || data.type === "achievment" ||  data.type === "playSound" || data.type === "mySkin"){
         sendPlayers(message.utf8Data)
       }else if(data.type === "setBlock" || data.type === "setTags"){
@@ -275,7 +352,8 @@ function init(serverPort, name,description, options){
     getInfo:getInfo,
     getLog:() => log,
     on:on,
-    createRoom: createRoom
+    createRoom: createRoom,
+    getRoom: room => rooms[room] || null
   }
 }
 
