@@ -94,6 +94,7 @@ function init(serverPort, name,description, options){
       code: options.code,
       spawn: options.spawn, //array
       canEdit: options.canEdit !== undefined ? options.canEdit : !options.code,
+      entities: [],
       portals: [],
       addPortal: function(where, x,y,z, x2,y2,z2){
         var temp
@@ -121,9 +122,16 @@ function init(serverPort, name,description, options){
       }
     }
   }
+
+  function updateEntities(){
+    for(var p of players){
+      if(!(p.room && p.room.entities.length)) continue
+      p.sendJSON('{"type":"entityPosAll","data":'+JSON.stringify(p.room.entities)+"}")
+    }
+  }
   
   var goToRoomQueue = []
-  setInterval(function(){
+  function updateGoToRoomQueue(){
     if(!goToRoomQueue.length) return
     for(var i = goToRoomQueue.length - 1; i >= 0; i--){
       var idx = goToRoomQueue[i].indexOf(":")
@@ -132,6 +140,11 @@ function init(serverPort, name,description, options){
       p.goToRoom(goToRoomQueue[i].slice(idx+1))
       goToRoomQueue.splice(i,1)
     }
+  }
+  
+  setInterval(function(){
+    updateEntities()
+    updateGoToRoomQueue()
   }, 1000)
   
   var players = []
@@ -205,6 +218,14 @@ function init(serverPort, name,description, options){
     }
     function sendThisPlayer(msg){
       connection.sendJSON(msg)
+    }
+    function sendPlayersThisRoom(msg){
+      for(var i=0; i<players.length; i++){
+        var p = players[i]
+        if(p !== connection && connection.room === p.room){
+          p.sendJSON(msg)
+        }
+      }
     }
     function closeThisPlayer(){
       connection.close()
@@ -290,7 +311,7 @@ function init(serverPort, name,description, options){
             goToRoomQueue.push(str)
           }
         }
-      }else if(data.type === "message" || data.type === "entityPos" || data.type === "entityDelete" || data.type === "die" || data.type === "harmEffect" || data.type === "achievment" ||  data.type === "playSound" || data.type === "mySkin"){
+      }else if(data.type === "message" || data.type === "die" || data.type === "harmEffect" || data.type === "achievment" ||  data.type === "playSound" || data.type === "mySkin"){
         sendPlayers(message.utf8Data)
       }else if(data.type === "setBlock" || data.type === "setTags"){
         if(!connection.room.canEdit) {
@@ -300,6 +321,34 @@ function init(serverPort, name,description, options){
           }
           return
         }
+        sendPlayersThisRoom(message.utf8Data)
+      }else if(data.type === "entityPos"){
+        delete data.type
+        var e = connection.room.entities
+        var found = false
+        for(var i = 0; i<e.length; i++){
+          var ent = e[i]
+          if(ent.id === data.id){
+            e[i] = data
+            found = true
+            continue
+          }
+        }
+        if(!found){
+          e.push(data)
+        }
+
+        sendPlayersThisRoom(message.utf8Data)
+      }else if(data.type === "entityDelete"){
+        var e = connection.room.entities
+        for(var i = 0; i<e.length; i++){
+          var ent = e[i]
+          if(ent.id === data.id){
+            e.splice(i,1)
+            continue
+          }
+        }
+
         sendPlayers(message.utf8Data)
       }else if(data.type === "hit"){
         sendPlayer(message.utf8Data, data.TO)
