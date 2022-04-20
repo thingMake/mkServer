@@ -323,6 +323,13 @@ function init(serverPort, name,description, options){
         }
         sendPlayersThisRoom(message.utf8Data)
       }else if(data.type === "entityPos"){
+        if(!connection.room.canEdit) {
+          return sendThisPlayer({
+            type:"entityDelete",
+            id:data.id
+          })
+        }
+        
         delete data.type
         var e = connection.room.entities
         var found = false
@@ -340,6 +347,8 @@ function init(serverPort, name,description, options){
 
         sendPlayersThisRoom(message.utf8Data)
       }else if(data.type === "entityDelete"){
+        if(!connection.room.canEdit) return
+        
         var e = connection.room.entities
         for(var i = 0; i<e.length; i++){
           var ent = e[i]
