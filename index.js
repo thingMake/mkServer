@@ -10,7 +10,7 @@ app.use(cors({
   },
   credentials: true, // <= Accept credentials (cookies) sent by the client
 }))
-const MineKhanServer = require("./MineKhanServer.js")
+const MineKhanServer = require("minekhan-server")
 var server
 
 router.get("/test",(req,res) => {
