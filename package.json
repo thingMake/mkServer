@@ -22,7 +22,7 @@
     "cors": "^2.8.5",
     "express": "^4.17.3",
     "level": "^7.0.1",
-    "minekhan-server": "^1.0.0",
+    "minekhan-server": "*",
     "websocket": "^1.0.34"
   }
 }

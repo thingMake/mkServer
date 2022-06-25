@@ -19,6 +19,9 @@ router.get("/test",(req,res) => {
 router.get("/log",(req,res) => {
   res.send("<span style='font-family:monospace;'>"+server.getLog().join("<br>")+"</span>")
 })
+router.get("/thumbnail",(req,res) => {
+  res.sendFile(__dirname+"/thumbnail.png")
+})
 
 app.use(router)
 app.use(express.static(__dirname + "/public"))
@@ -34,6 +37,7 @@ let serverPort = app.listen(3000, function(){
 });
 
 server = MineKhanServer(serverPort, "Test server","This server is in development. What should I call this server?", {
+  thumbnail: "https://mkServer.minekhan.repl.co/thumbnail",
   saveActivity:false
 })
 router.get("/info",(req,res) => {
