@@ -10,7 +10,7 @@ app.use(cors({
   },
   credentials: true, // <= Accept credentials (cookies) sent by the client
 }))
-const MineKhanServer = require("./a.js")
+const MineKhanServer = require("minekhan-server")
 var server
 
 router.get("/test",(req,res) => {
@@ -78,7 +78,15 @@ room.addPortal(function(con){
     room = server.getRoom(name)
     if(room){
       if(room.waiting && room.players.length < 4){
-        switch(room.players.length){
+        var availableBeds = [true,true,true,true]
+        for(var p of room.players){
+          availableBeds[p.bed] = false
+        }
+        switch(availableBeds.indexOf(true)){
+          case 0:
+            room.spawn = [28,20,9]
+            con.bed = 0
+            break
           case 1:
             room.spawn = [10,20,7]
             con.bed = 1
