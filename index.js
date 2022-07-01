@@ -54,11 +54,13 @@ var room = server.createRoom("lobby", {
 room.addPortal("creative", 14,5,12, 16,9,14)
 room.addPortal("choose bedwars", -12,6,11, -16,9,15)
 
-//some random place
 room = server.createRoom("creative", {
   code:"World;0;8,6,8,0,0,2;Alpha 1.0.5;;;",
   canEdit:true,
-  survival:false
+  settings:{
+    dayNightCycle:true,
+    tntExplode:false
+  }
 })
 
 room = server.createRoom("choose bedwars", {
