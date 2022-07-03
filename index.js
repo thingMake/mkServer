@@ -51,6 +51,10 @@ var room = server.createRoom("lobby", {
   spawn:[0,6,0],
   survival:true
 })
+var lobbyText = room.addText(0,6,2,"hello",[0,0,0],[1,1,1,1])
+setInterval(function(){
+  lobbyText.setText("Hello {username},\nThere are "+server.players.length+" players on this server.")
+},1000)
 room.addPortal("creative", 14,5,12, 16,9,14)
 room.addPortal("choose bedwars", -12,6,11, -16,9,15)
 
